@@ -79,12 +79,38 @@ const getStatusRestrictionInfo = (data: any) => {
   return { set1Met, set2Met, set3Met };
 };
 
+const getRemainingTime = (dateStr: string) => {
+  if (!dateStr) return null;
+  const submittedDate = new Date(dateStr);
+  const now = new Date();
+  
+  // Set time to midnight for consistent day-based calculation
+  const d1 = new Date(submittedDate.getFullYear(), submittedDate.getMonth(), submittedDate.getDate());
+  const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const diffMs = d2.getTime() - d1.getTime();
+  const fifteenDaysMs = 15 * 24 * 60 * 60 * 1000;
+  
+  if (diffMs >= fifteenDaysMs) {
+    return { text: 'Expired (15+ Days)', isExpired: true };
+  } else {
+    const remainingMs = fifteenDaysMs - diffMs;
+    const remainingDays = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+    return { text: `${remainingDays} days remaining`, isExpired: false };
+  }
+};
+
 const isStatusDisabled = (status: string, data: any) => {
   const { set1Met, set2Met, set3Met } = getStatusRestrictionInfo(data);
   
-  const set1Statuses = ['Step 1 Done', 'Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed', 'Decommissioned', 'Ready for KYC'];
-  const set2Statuses = ['Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed', 'Decommissioned'];
-  const set3Statuses = ['Step 3 Done', 'Completed', 'Decommissioned'];
+  // Exception: Decommissioned, Disabled, Need Fix, and Pending are handled separately or always available
+  if (['Decommissioned', 'Disabled', 'Need Fix', 'Pending'].includes(status)) {
+    return false;
+  }
+
+  const set1Statuses = ['Step 1 Done', 'Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed', 'Ready for KYC'];
+  const set2Statuses = ['Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed'];
+  const set3Statuses = ['Step 3 Done', 'Completed'];
 
   if (set1Statuses.includes(status) && !set1Met) return true;
   if (set2Statuses.includes(status) && !set2Met) return true;
@@ -274,23 +300,18 @@ const AddRecordModal = ({ isOpen, onClose, onSave }: { isOpen: boolean; onClose:
   // Countdown & Auto-Status Effect
   React.useEffect(() => {
     const checkExpiry = () => {
-      if (!formData.submittedAt) return;
+      const info = getRemainingTime(formData.submittedAt);
+      if (!info) {
+        setCountdown(null);
+        return;
+      }
       
-      const submittedDate = new Date(formData.submittedAt);
-      const now = new Date();
-      const diffMs = now.getTime() - submittedDate.getTime();
-      const fifteenDaysMs = 15 * 24 * 60 * 60 * 1000;
-      
-      if (diffMs >= fifteenDaysMs) {
+      if (info.isExpired) {
         if (formData.progressStatus !== 'Ready for KYC') {
           setFormData(prev => ({ ...prev, progressStatus: 'Ready for KYC' }));
         }
-        setCountdown('Expired (15+ Days)');
-      } else {
-        const remainingMs = fifteenDaysMs - diffMs;
-        const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
-        setCountdown(`${remainingDays} days remaining`);
       }
+      setCountdown(info.text);
     };
 
     checkExpiry();
@@ -408,9 +429,6 @@ const AddRecordModal = ({ isOpen, onClose, onSave }: { isOpen: boolean; onClose:
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Submitted At</label>
-                <span className={`text-[10px] font-bold ${countdown?.includes('Expired') ? 'text-rose-500' : 'text-amber-500'} bg-gray-100 px-2 py-0.5 rounded-full`}>
-                  {countdown}
-                </span>
               </div>
               <input 
                 type="date" 
@@ -418,6 +436,12 @@ const AddRecordModal = ({ isOpen, onClose, onSave }: { isOpen: boolean; onClose:
                 onChange={(e) => setFormData({...formData, submittedAt: e.target.value})}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
               />
+              {countdown && (
+                <div className={`flex items-center gap-1.5 mt-1.5 px-3 py-1.5 rounded-lg border ${countdown?.includes('Expired') ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-amber-50 border-amber-100 text-amber-600'}`}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Remaining Time:</span>
+                  <span className="text-xs font-bold">{countdown}</span>
+                </div>
+              )}
             </div>
 
             {/* Field: DSP */}
@@ -1354,10 +1378,19 @@ export default function App() {
 
                           {/* Conditional Columns */}
                           {['All Accounts', 'Step 2', 'Step 3', 'Fully Verified', 'Decommissioned'].includes(activeTab) && (
-                            <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-500">
-                               {isEditing ? (
-                                 <input type="date" className="w-32 bg-white border border-gray-200 rounded px-2 py-1 text-xs" value={editFormData.submittedAt} onChange={(e) => setEditFormData({...editFormData, submittedAt: e.target.value})} />
-                               ) : record.submittedAt}
+                            <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-gray-500">
+                                    {isEditing ? (
+                                      <input type="date" className="w-32 bg-white border border-gray-200 rounded px-2 py-1 text-xs" value={editFormData.submittedAt} onChange={(e) => setEditFormData({...editFormData, submittedAt: e.target.value})} />
+                                    ) : record.submittedAt}
+                                  </span>
+                                  {record.submittedAt && (
+                                    <span className={`text-[9px] font-bold mt-0.5 ${getRemainingTime(record.submittedAt)?.isExpired ? 'text-rose-500' : 'text-amber-500'}`}>
+                                      {getRemainingTime(record.submittedAt)?.text}
+                                    </span>
+                                  )}
+                                </div>
                             </td>
                           )}
                           {['All Accounts', 'Step 2', 'Step 3', 'Fully Verified', 'Decommissioned'].includes(activeTab) && (
