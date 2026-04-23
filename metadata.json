@@ -1,0 +1,6 @@
+{
+  "name": "Account Progress Manager",
+  "description": "A workflow-driven dashboard for tracking and managing account progress with hierarchical data segmentation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
