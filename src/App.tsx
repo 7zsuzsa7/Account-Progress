@@ -1301,7 +1301,7 @@ export default function App() {
                       { label: 'Store', show: activeTab === 'Step 3' },
                       { label: 'SYS', show: ['Step 2', 'Step 3'].includes(activeTab) },
                       { label: 'GPO', show: ['Step 2', 'Step 3'].includes(activeTab) },
-                      { label: 'Remark', show: activeTab !== 'All Accounts' },
+                      { label: 'Remark', show: true },
                       { label: 'Actions', show: true, align: 'center' }
                     ].filter(h => h.show).map((h, i) => (
                       <th key={i} className={`px-4 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[120px] ${h.align === 'center' ? 'text-center' : 'text-left'}`}>
@@ -1546,13 +1546,11 @@ export default function App() {
                           )}
 
                           {/* Remark Section */}
-                          {activeTab !== 'All Accounts' && (
-                             <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-500">
-                               {isEditing ? (
-                                 <input type="text" className="w-40 bg-white border border-gray-200 rounded px-2 py-1 text-sm font-light italic" value={editFormData.remark} onChange={(e) => setEditFormData({...editFormData, remark: e.target.value})} />
-                               ) : record.remark}
-                            </td>
-                          )}
+                          <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-500">
+                             {isEditing ? (
+                               <input type="text" className="w-40 bg-white border border-gray-200 rounded px-2 py-1 text-sm font-light italic" value={editFormData.remark} onChange={(e) => setEditFormData({...editFormData, remark: e.target.value})} />
+                             ) : record.remark}
+                          </td>
 
                           <td className="px-4 py-4 whitespace-nowrap text-center">
                             <div className="flex items-center justify-center gap-2">
