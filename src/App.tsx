@@ -59,6 +59,40 @@ const getCoordinatesFromAddress = async (address: string) => {
   }
 };
 
+// --- Progress Status Restrictions ---
+const getStatusRestrictionInfo = (data: any) => {
+  // Normalize keys (handle both modal state and record state)
+  const dti = data.dti !== undefined ? data.dti : data.hasDti;
+  const selfie = data.selfie !== undefined ? data.selfie : data.hasSelfie;
+  const store = data.store !== undefined ? data.store : data.hasStorePhoto;
+  const inSystem = data.inSystem !== undefined ? data.inSystem : data.onSystem;
+  const syncedGpo = data.syncedGpo !== undefined ? data.syncedGpo : data.hasSyncedGpo;
+
+  const hasBasic = data.mobileNumber && data.firstName && data.lastName && data.middleName && 
+                   data.idType && data.submittedAt && data.dsp && data.storeName && 
+                   data.fullAddress && data.latitude && data.longitude;
+
+  const set1Met = !!(hasBasic && (data.simStatus === 'Ready' || data.simStatus === 'Pending'));
+  const set2Met = !!(hasBasic && data.simStatus === 'Ready' && data.mpin && dti && inSystem && syncedGpo);
+  const set3Met = !!(set2Met && selfie && store);
+
+  return { set1Met, set2Met, set3Met };
+};
+
+const isStatusDisabled = (status: string, data: any) => {
+  const { set1Met, set2Met, set3Met } = getStatusRestrictionInfo(data);
+  
+  const set1Statuses = ['Step 1 Done', 'Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed', 'Decommissioned', 'Ready for KYC'];
+  const set2Statuses = ['Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed', 'Decommissioned'];
+  const set3Statuses = ['Step 3 Done', 'Completed', 'Decommissioned'];
+
+  if (set1Statuses.includes(status) && !set1Met) return true;
+  if (set2Statuses.includes(status) && !set2Met) return true;
+  if (set3Statuses.includes(status) && !set3Met) return true;
+
+  return false;
+};
+
 // --- Types ---
 
 type WorkflowStatus = 'All Accounts' | 'Step 1' | 'Step 2' | 'Step 3' | 'Fully Verified' | 'Decommissioned';
@@ -362,7 +396,11 @@ const AddRecordModal = ({ isOpen, onClose, onSave }: { isOpen: boolean; onClose:
                 onChange={(e) => setFormData({...formData, progressStatus: e.target.value})}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none cursor-pointer"
               >
-                {progressStatusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                {progressStatusOptions.map(opt => (
+                  <option key={opt} value={opt} disabled={isStatusDisabled(opt, formData)}>
+                    {opt}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -776,6 +814,8 @@ export default function App() {
     }
   };
 
+  const selectedRecords = useMemo(() => records.filter(r => selectedIds.includes(r.id)), [records, selectedIds]);
+
   const handleBulkUpdate = (field: string, value: any) => {
     setRecords(records.map(r => 
       selectedIds.includes(r.id) ? { ...r, [field]: value } : r
@@ -1126,7 +1166,15 @@ export default function App() {
                       className="w-full bg-indigo-800/50 border border-indigo-700/50 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     >
                       <option value="">Update Status...</option>
-                      {progressStatusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      {progressStatusOptions.map(opt => (
+                        <option 
+                          key={opt} 
+                          value={opt} 
+                          disabled={selectedRecords.some(r => isStatusDisabled(opt, r))}
+                        >
+                          {opt}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="space-y-1.5">
@@ -1293,7 +1341,11 @@ export default function App() {
                           <td className="px-4 py-4 whitespace-nowrap">
                              {isEditing ? (
                                <select className="w-32 bg-white border border-gray-200 rounded px-2 py-1 text-xs" value={editFormData.progressStatus} onChange={(e) => setEditFormData({...editFormData, progressStatus: e.target.value})}>
-                                 {progressStatusOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                 {progressStatusOptions.map(opt => (
+                                   <option key={opt} value={opt} disabled={isStatusDisabled(opt, editFormData)}>
+                                     {opt}
+                                   </option>
+                                 ))}
                                </select>
                              ) : (
                                <Badge variant={record.progressStatus === 'Completed' ? 'success' : record.progressStatus === 'Rejected' ? 'error' : 'info'}>{record.progressStatus}</Badge>
