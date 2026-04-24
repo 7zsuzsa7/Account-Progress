@@ -1,1 +1,55 @@
 @import "tailwindcss";
+
+/* Global overrides for Element Plus to match ProgressHQ theme */
+
+/* Custom Table Overrides */
+.custom-table .el-table__header th {
+  @apply bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-tighter h-16 border-b border-gray-100;
+}
+.custom-table .el-table__row td {
+  @apply h-20 border-b border-gray-50;
+}
+.custom-table .el-table__row:hover td {
+  @apply bg-indigo-50/20;
+}
+.custom-table .el-checkbox__inner {
+  @apply rounded-md border-gray-300;
+}
+.custom-table .el-checkbox__input.is-checked .el-checkbox__inner {
+  @apply bg-indigo-600 border-indigo-600;
+}
+
+/* Pagination Overrides */
+.custom-pagination .btn-next,
+.custom-pagination .btn-prev,
+.custom-pagination .el-pager li {
+  @apply !bg-transparent !text-[10px] !font-bold !text-gray-400 hover:!text-indigo-600;
+}
+.custom-pagination .el-pager li.is-active {
+  @apply !text-white !bg-indigo-600 !rounded-lg !min-w-[28px] !h-7 !leading-7;
+}
+
+/* Element Plus Input & Modal Spacing */
+.el-input__wrapper {
+  @apply !bg-gray-50 !shadow-none !border !border-gray-200 !rounded-xl hover:!border-indigo-300 focus:!border-indigo-500 !transition-all;
+}
+.el-select .el-input__wrapper {
+  @apply !rounded-xl;
+}
+.el-date-editor.el-input__wrapper {
+  @apply !w-full;
+}
+
+/* Dialog Styles */
+.el-dialog {
+  @apply !rounded-[2rem] overflow-hidden;
+}
+.el-dialog__header {
+  @apply !p-8 !pb-2 border-b border-gray-50;
+}
+.el-dialog__title {
+  @apply !text-xl !font-black !text-gray-900;
+}
+.el-dialog__footer {
+  @apply !p-0 border-t border-gray-50;
+}
