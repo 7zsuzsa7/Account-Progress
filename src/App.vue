@@ -274,6 +274,11 @@ const isExpired = computed(() => {
   return info ? info.isExpired : false;
 });
 
+const isPhoneNumberDuplicate = computed(() => {
+  if (!formData.value.mobileNumber) return false;
+  return records.value.some(r => r.mobileNumber === formData.value.mobileNumber);
+});
+
 // --- Watchers ---
 watch(() => isExpired.value, (newExpired) => {
   if (newExpired && formData.value.progressStatus !== 'Ready for KYC' && formData.value.progressStatus !== 'Decommissioned') {
@@ -466,6 +471,11 @@ const handleSaveRecord = async () => {
   const missing = mandatoryFields.filter(f => !formData.value[f as keyof typeof formData.value]);
   if (missing.length > 0) {
     ElMessage.warning(`Please fill in all mandatory fields: ${missing.join(', ')}`);
+    return;
+  }
+
+  if (isPhoneNumberDuplicate.value) {
+    ElMessage.error('This mobile number is already in use for another account.');
     return;
   }
 
@@ -933,7 +943,11 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
           <div class="grid grid-cols-2 gap-x-8 gap-y-4">
             <div class="space-y-1">
               <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mobile Number *</label>
-              <el-input v-model="formData.mobileNumber" placeholder="09XXXXXXXXX" />
+              <el-input v-model="formData.mobileNumber" placeholder="09XXXXXXXXX" :class="{'duplicate-input': isPhoneNumberDuplicate}" />
+              <div v-if="isPhoneNumberDuplicate" class="mt-1 p-2 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-2">
+                <AlertCircle class="text-rose-600" :size="12" />
+                <span class="text-[10px] font-bold text-rose-600 uppercase tracking-tight">Number already registered</span>
+              </div>
             </div>
             <div class="space-y-1">
               <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">First Name *</label>
@@ -1269,5 +1283,8 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
 </template>
 
 <style>
-/* Scoped styles can go here if they don't use @apply with global utilities */
+.duplicate-input .el-input__wrapper {
+  box-shadow: 0 0 0 1px #f43f5e inset !important;
+  background-color: #fff1f2 !important;
+}
 </style>
