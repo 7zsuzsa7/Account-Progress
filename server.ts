@@ -58,7 +58,7 @@ async function startServer() {
       longitude: '120.9842',
       mpin: '123456',
       accountStatus: 'Active',
-      progressStatus: 'Completed',
+      progressStatus: 'Fully Verified',
       onSystem: true,
       hasDti: true,
       hasSelfie: true,

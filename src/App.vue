@@ -137,12 +137,11 @@ const idTypeOptions = [
 ];
 const progressStatusOptions = [
   'Step 1 Done', 'Step 2 Done', 'Step 3 Done', 'Need Fix', 
-  'Approved', 'Rejected', 'Completed', 'Disabled', 
+  'Approved', 'Rejected', 'Fully Verified', 'Disabled', 
   'Decommissioned', 'Ready for KYC', 'Pending'
 ];
 const simStatusOptions = [
-  'Pending', 'Ready', 'No Signal', 'Invalid', 'Blocked', 
-  'Used', 'Lost', 'Damaged', 'Expired'
+  'Pending', 'Ready', 'Invalid', 'Expired'
 ];
 
 // --- Subpage Configuration ---
@@ -199,9 +198,9 @@ const isStatusDisabled = (status: string, data: any) => {
     return false;
   }
 
-  const set1Statuses = ['Step 1 Done', 'Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed', 'Ready for KYC'];
-  const set2Statuses = ['Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Completed'];
-  const set3Statuses = ['Step 3 Done', 'Completed'];
+  const set1Statuses = ['Step 1 Done', 'Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Fully Verified', 'Ready for KYC'];
+  const set2Statuses = ['Step 2 Done', 'Step 3 Done', 'Approved', 'Rejected', 'Fully Verified'];
+  const set3Statuses = ['Step 3 Done', 'Fully Verified'];
 
   if (set1Statuses.includes(status) && !set1Met) return true;
   if (set2Statuses.includes(status) && !set2Met) return true;
@@ -237,11 +236,11 @@ const getCanonicalSubpage = (record: AccountRecord): WorkflowStatus | null => {
 
   if (basicData && 
       ['Disabled', 'Decommissioned'].includes(record.progressStatus) && 
-      ['No Signal', 'Invalid', 'Blocked', 'Used', 'Lost', 'Damaged', 'Expired'].includes(record.simStatus)) {
+      ['Invalid', 'Expired'].includes(record.simStatus)) {
     return 'Decommissioned';
   }
 
-  if (verifiedData && record.progressStatus === 'Completed' && record.simStatus === 'Ready') {
+  if (verifiedData && record.progressStatus === 'Fully Verified' && record.simStatus === 'Ready') {
     return 'Fully Verified';
   }
 
@@ -264,7 +263,33 @@ const getCanonicalSubpage = (record: AccountRecord): WorkflowStatus | null => {
   return null;
 };
 
+// --- Computed ---
+const countdownText = computed(() => {
+  const info = getRemainingTime(formData.value.submittedAt);
+  return info ? info.text : null;
+});
+
+const isExpired = computed(() => {
+  const info = getRemainingTime(formData.value.submittedAt);
+  return info ? info.isExpired : false;
+});
+
 // --- Watchers ---
+watch(() => isExpired.value, (newExpired) => {
+  if (newExpired && formData.value.progressStatus !== 'Ready for KYC' && formData.value.progressStatus !== 'Decommissioned') {
+    formData.value.progressStatus = 'Ready for KYC';
+  }
+});
+
+watch(() => editFormData.value?.submittedAt, (newDate) => {
+  if (editFormData.value && newDate) {
+    const info = getRemainingTime(newDate);
+    if (info?.isExpired && editFormData.value.progressStatus !== 'Ready for KYC' && editFormData.value.progressStatus !== 'Decommissioned') {
+      editFormData.value.progressStatus = 'Ready for KYC';
+    }
+  }
+});
+
 watch(() => formData.value.fullAddress, (newVal) => {
   if (geocodeTimer) clearTimeout(geocodeTimer);
   if (!newVal || newVal.length <= 5) return;
@@ -349,16 +374,6 @@ const filteredRecords = computed(() => {
 
     return true;
   });
-});
-
-const countdownText = computed(() => {
-  const info = getRemainingTime(formData.value.submittedAt);
-  return info ? info.text : null;
-});
-
-const isExpired = computed(() => {
-  const info = getRemainingTime(formData.value.submittedAt);
-  return info ? info.isExpired : false;
 });
 
 // --- Actions ---
@@ -492,9 +507,9 @@ const handleCancelEdit = () => {
 };
 
 const getBadgeVariant = (status: string) => {
-  if (['Completed', 'Approved', 'Ready', 'Active'].includes(status)) return 'success';
+  if (['Fully Verified', 'Approved', 'Ready', 'Active'].includes(status)) return 'success';
   if (['Pending', 'Step 1 Done', 'Step 2 Done', 'Step 3 Done'].includes(status)) return 'warning';
-  if (['Rejected', 'Disabled', 'Decommissioned', 'Invalid', 'Blocked'].includes(status)) return 'danger';
+  if (['Rejected', 'Disabled', 'Decommissioned', 'Invalid'].includes(status)) return 'danger';
   if (['Ready for KYC'].includes(status)) return 'info';
   return 'info';
 };
