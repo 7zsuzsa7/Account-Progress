@@ -23,35 +23,37 @@ import {
   getAccounts, 
   createAccount, 
   updateAccount, 
+  deleteAccount,
   geocodeAddress 
 } from './services/api';
-import { ElMessage } from 'element-plus';
+import { t } from './i18n';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 // --- Types ---
 type WorkflowStatus = 'All Accounts' | 'Step 1' | 'Step 2' | 'Step 3' | 'Fully Verified' | 'Decommissioned';
 
 interface AccountRecord {
   id: string | number;
-  submittedAt: string;
+  submitted_at: string;
   dsp: string;
-  mobileNumber: string;
-  simStatus: string;
-  idType: string;
-  firstName: string;
-  lastName: string;
-  middleName: string;
-  storeName: string;
-  fullAddress: string;
+  mobile_number: string;
+  sim_status: string;
+  id_type: string;
+  first_name: string;
+  last_name: string;
+  middle_name: string;
+  store_name: string;
+  address_full: string;
   latitude: string;
   longitude: string;
-  mpin: string;
-  accountStatus: 'Active' | 'Inactive' | 'Pending';
-  progressStatus: string;
-  onSystem: boolean;
-  hasDti: boolean;
-  hasSelfie: boolean;
-  hasStorePhoto: boolean;
-  hasSyncedGpo: boolean;
+  passwords: string;
+  account_status: 'Active' | 'Inactive' | 'Pending';
+  progress_status: string;
+  is_on_system: number;
+  dti_done: number;
+  selfie_done: number;
+  store_photo_done: number;
+  synced_to_gpo: number;
   remark: string;
 }
 
@@ -67,65 +69,66 @@ const selectedRecords = ref<AccountRecord[]>([]);
 const editingId = ref<string | number | null>(null);
 const editFormData = ref<any>(null);
 const bulkFormData = reactive({
-  idType: '',
-  progressStatus: '',
+  id_type: '',
+  progress_status: '',
   dsp: '',
-  simStatus: '',
-  mpin: '',
-  hasDti: null as boolean | null,
-  hasSelfie: null as boolean | null,
-  hasStorePhoto: null as boolean | null,
-  onSystem: null as boolean | null,
-  hasSyncedGpo: null as boolean | null
+  sim_status: '',
+  passwords: '',
+  dti_done: null as number | null,
+  selfie_done: null as number | null,
+  store_photo_done: null as number | null,
+  is_on_system: null as number | null,
+  synced_to_gpo: null as number | null
 });
 
 // --- Filters State ---
 const initialFilters = {
-  mobileNumber: '',
-  firstName: '',
-  lastName: '',
-  middleName: '',
-  idType: '',
-  progressStatus: '',
-  submittedAt: '',
+  mobile_number: '',
+  first_name: '',
+  last_name: '',
+  middle_name: '',
+  id_type: '',
+  progress_status: '',
+  submitted_at: '',
   dsp: '',
-  storeName: '',
-  fullAddress: '',
+  store_name: '',
+  address_full: '',
   latitude: '',
   longitude: '',
-  simStatus: '',
-  mpin: '',
+  sim_status: '',
+  passwords: '',
   remark: '',
-  hasDti: false,
-  hasSelfie: false,
-  hasStorePhoto: false,
-  onSystem: false,
-  hasSyncedGpo: false
+  dti_done: false,
+  selfie_done: false,
+  store_photo_done: false,
+  is_on_system: false,
+  synced_to_gpo: false
 };
 const filters = reactive({ ...initialFilters });
 
 // --- Form State ---
 const initialForm = {
-  mobileNumber: '',
-  firstName: '',
-  lastName: '',
-  middleName: '',
-  idType: '',
-  progressStatus: 'Pending',
-  submittedAt: new Date().toISOString().slice(0, 10),
+  mobile_number: '',
+  first_name: '',
+  last_name: '',
+  middle_name: '',
+  id_type: '',
+  progress_status: 'Pending',
+  submitted_at: new Date().toISOString().slice(0, 10),
   dsp: '',
-  storeName: '',
-  fullAddress: '',
+  store_name: '',
+  address_full: '',
   latitude: '',
   longitude: '',
-  simStatus: 'Pending',
-  mpin: '',
-  hasDti: false,
-  hasSelfie: false,
-  hasStorePhoto: false,
-  onSystem: false,
-  hasSyncedGpo: false,
-  remark: ''
+  sim_status: 'Pending',
+  passwords: '',
+  dti_done: 0,
+  selfie_done: 0,
+  store_photo_done: 0,
+  is_on_system: 0,
+  synced_to_gpo: 0,
+  remark: '',
+  account_status: 'Pending'
 };
 const formData = ref({ ...initialForm });
 
@@ -148,28 +151,28 @@ const simStatusOptions = [
 const tabConfig = computed(() => {
   const configs: Record<WorkflowStatus, { filters: string[], columns: string[] }> = {
     'All Accounts': {
-      filters: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'fullAddress', 'latitude', 'longitude', 'simStatus', 'mpin', 'hasDti', 'hasSelfie', 'hasStorePhoto', 'onSystem', 'hasSyncedGpo', 'remark'],
-      columns: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'fullAddress', 'latitude', 'longitude', 'simStatus', 'mpin', 'documentation', 'remark']
+      filters: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'address_full', 'latitude', 'longitude', 'sim_status', 'passwords', 'dti_done', 'selfie_done', 'store_photo_done', 'is_on_system', 'synced_to_gpo', 'remark'],
+      columns: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'address_full', 'latitude', 'longitude', 'sim_status', 'passwords', 'documentation', 'remark']
     },
     'Step 1': {
-      filters: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'hasDti', 'remark'],
-      columns: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'hasDti', 'remark']
+      filters: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'dti_done', 'remark'],
+      columns: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'dti_done', 'remark']
     },
     'Step 2': {
-      filters: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'simStatus', 'mpin', 'hasDti', 'onSystem', 'hasSyncedGpo', 'remark'],
-      columns: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'fullAddress', 'latitude', 'longitude', 'simStatus', 'mpin', 'hasDti', 'onSystem', 'hasSyncedGpo', 'remark']
+      filters: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'sim_status', 'passwords', 'dti_done', 'is_on_system', 'synced_to_gpo', 'remark'],
+      columns: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'address_full', 'latitude', 'longitude', 'sim_status', 'passwords', 'dti_done', 'is_on_system', 'synced_to_gpo', 'remark']
     },
     'Step 3': {
-      filters: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'simStatus', 'mpin', 'hasDti', 'hasSelfie', 'hasStorePhoto', 'onSystem', 'hasSyncedGpo', 'remark'],
-      columns: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'fullAddress', 'latitude', 'longitude', 'simStatus', 'mpin', 'hasDti', 'hasSelfie', 'hasStorePhoto', 'onSystem', 'hasSyncedGpo', 'remark']
+      filters: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'sim_status', 'passwords', 'dti_done', 'selfie_done', 'store_photo_done', 'is_on_system', 'synced_to_gpo', 'remark'],
+      columns: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'address_full', 'latitude', 'longitude', 'sim_status', 'passwords', 'dti_done', 'selfie_done', 'store_photo_done', 'is_on_system', 'synced_to_gpo', 'remark']
     },
     'Fully Verified': {
-      filters: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'dsp', 'storeName', 'simStatus', 'mpin', 'remark'],
-      columns: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'fullAddress', 'simStatus', 'mpin', 'remark']
+      filters: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'dsp', 'store_name', 'sim_status', 'passwords', 'remark'],
+      columns: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'address_full', 'sim_status', 'passwords', 'remark']
     },
     'Decommissioned': {
-      filters: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'dsp', 'storeName', 'simStatus', 'mpin', 'remark'],
-      columns: ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus', 'submittedAt', 'dsp', 'storeName', 'fullAddress', 'simStatus', 'mpin', 'remark']
+      filters: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'dsp', 'store_name', 'sim_status', 'passwords', 'remark'],
+      columns: ['mobile_number', 'first_name', 'last_name', 'middle_name', 'id_type', 'progress_status', 'submitted_at', 'dsp', 'store_name', 'address_full', 'sim_status', 'passwords', 'remark']
     }
   };
   return configs[activeTab.value];
@@ -180,13 +183,13 @@ const tabConfig = computed(() => {
 let geocodeTimer: any = null;
 
 const getStatusRestrictionInfo = (data: any) => {
-  const hasBasic = data.mobileNumber && data.firstName && data.lastName && data.middleName && 
-                   data.idType && data.submittedAt && data.dsp && data.storeName && 
-                   data.fullAddress && data.latitude && data.longitude;
+  const hasBasic = data.mobile_number && data.first_name && data.last_name && 
+                   data.id_type && data.submitted_at && data.dsp && data.store_name && 
+                   data.address_full && data.latitude && data.longitude;
 
-  const set1Met = !!(hasBasic && (data.simStatus === 'Ready' || data.simStatus === 'Pending'));
-  const set2Met = !!(hasBasic && data.simStatus === 'Ready' && data.mpin && data.hasDti && data.onSystem && data.hasSyncedGpo);
-  const set3Met = !!(set2Met && data.hasSelfie && data.hasStorePhoto);
+  const set1Met = !!(hasBasic && (data.sim_status === 'Ready' || data.sim_status === 'Pending'));
+  const set2Met = !!(hasBasic && data.sim_status === 'Ready' && data.passwords && data.dti_done && data.is_on_system && data.synced_to_gpo);
+  const set3Met = !!(set2Met && data.selfie_done && data.store_photo_done);
 
   return { set1Met, set2Met, set3Met };
 };
@@ -229,73 +232,85 @@ const getRemainingTime = (dateStr: string) => {
 };
 
 const getCanonicalSubpage = (record: AccountRecord): WorkflowStatus | null => {
-  const basicData = record.mobileNumber && record.firstName && record.lastName && record.middleName && record.idType;
-  const step2Data = basicData && record.submittedAt && record.dsp && record.storeName && record.fullAddress && record.latitude && record.longitude;
-  const step3Data = step2Data && record.mpin && record.hasDti && record.onSystem && record.hasSyncedGpo;
-  const verifiedData = step3Data && record.hasSelfie && record.hasStorePhoto;
+  const basicData = record.mobile_number && record.first_name && record.last_name && record.id_type;
+  const step2Data = basicData && record.submitted_at && record.dsp && record.store_name && record.address_full && record.latitude && record.longitude;
+  const step3Data = step2Data && record.passwords && record.dti_done && record.is_on_system && record.synced_to_gpo;
+  const verifiedData = step3Data && record.selfie_done && record.store_photo_done;
 
-  if (basicData && 
-      ['Disabled', 'Decommissioned'].includes(record.progressStatus) && 
-      ['Invalid', 'Expired'].includes(record.simStatus)) {
+  // 1. Terminal / Exception Statuses
+  if (record.progress_status === 'Decommissioned' || record.progress_status === 'Disabled') {
     return 'Decommissioned';
   }
 
-  if (verifiedData && record.progressStatus === 'Fully Verified' && record.simStatus === 'Ready') {
+  // 2. Fully Verified - Destination for completed records
+  if (record.progress_status === 'Fully Verified' || record.progress_status === 'Approved') {
     return 'Fully Verified';
   }
 
-  if (step3Data && 
-      ['Step 2 Done', 'Need Fix', 'Approved', 'Rejected', 'Ready for KYC'].includes(record.progressStatus) && 
-      record.simStatus === 'Ready') {
+  // 3. Status-based routing (Workflow)
+  // Logic: When a step is "Done", it moves to the NEXT subpage to await the next step actions.
+  
+  if (record.progress_status === 'Step 3 Done') {
+    // Finished Step 3 tasks, moved to Fully Verified subpage for final verification
+    return 'Fully Verified';
+  }
+
+  if (record.progress_status === 'Step 2 Done' || ['Step 3 Done', 'Approved'].includes(record.progress_status)) {
+    // Completed Step 2, currently in Step 3 stage
     return 'Step 3';
   }
 
-  if (step2Data && 
-      ['Step 1 Done', 'Ready for KYC'].includes(record.progressStatus) && 
-      ['Ready', 'Pending'].includes(record.simStatus)) {
+  if (record.progress_status === 'Step 1 Done') {
+    // Completed Step 1, currently in Step 2 stage
     return 'Step 2';
   }
 
-  if (basicData && record.progressStatus === 'Pending') {
+  if (record.progress_status === 'Pending' || record.progress_status === 'Ready for KYC') {
     return 'Step 1';
   }
+
+  // 4. Data-driven fallbacks (if status is generic like 'Need Fix')
+  if (verifiedData) return 'Fully Verified';
+  if (step3Data) return 'Step 3';
+  if (step2Data) return 'Step 2';
+  if (basicData) return 'Step 1';
 
   return null;
 };
 
 // --- Computed ---
 const countdownText = computed(() => {
-  const info = getRemainingTime(formData.value.submittedAt);
+  const info = getRemainingTime(formData.value.submitted_at);
   return info ? info.text : null;
 });
 
 const isExpired = computed(() => {
-  const info = getRemainingTime(formData.value.submittedAt);
+  const info = getRemainingTime(formData.value.submitted_at);
   return info ? info.isExpired : false;
 });
 
 const isPhoneNumberDuplicate = computed(() => {
-  if (!formData.value.mobileNumber) return false;
-  return records.value.some(r => r.mobileNumber === formData.value.mobileNumber);
+  if (!formData.value.mobile_number) return false;
+  return records.value.some(r => r.mobile_number === formData.value.mobile_number);
 });
 
 // --- Watchers ---
 watch(() => isExpired.value, (newExpired) => {
-  if (newExpired && formData.value.progressStatus !== 'Ready for KYC' && formData.value.progressStatus !== 'Decommissioned') {
-    formData.value.progressStatus = 'Ready for KYC';
+  if (newExpired && formData.value.progress_status !== 'Ready for KYC' && formData.value.progress_status !== 'Decommissioned') {
+    formData.value.progress_status = 'Ready for KYC';
   }
 });
 
-watch(() => editFormData.value?.submittedAt, (newDate) => {
+watch(() => editFormData.value?.submitted_at, (newDate) => {
   if (editFormData.value && newDate) {
     const info = getRemainingTime(newDate);
-    if (info?.isExpired && editFormData.value.progressStatus !== 'Ready for KYC' && editFormData.value.progressStatus !== 'Decommissioned') {
-      editFormData.value.progressStatus = 'Ready for KYC';
+    if (info?.isExpired && editFormData.value.progress_status !== 'Ready for KYC' && editFormData.value.progress_status !== 'Decommissioned') {
+      editFormData.value.progress_status = 'Ready for KYC';
     }
   }
 });
 
-watch(() => formData.value.fullAddress, (newVal) => {
+watch(() => formData.value.address_full, (newVal) => {
   if (geocodeTimer) clearTimeout(geocodeTimer);
   if (!newVal || newVal.length <= 5) return;
   
@@ -315,7 +330,7 @@ watch(() => formData.value.fullAddress, (newVal) => {
   }, 1000);
 });
 
-watch(() => editFormData.value?.fullAddress, (newVal) => {
+watch(() => editFormData.value?.address_full, (newVal) => {
   if (editingId.value) {
     if (geocodeTimer) clearTimeout(geocodeTimer);
     if (!newVal || newVal.length <= 5) return;
@@ -354,28 +369,28 @@ const filteredRecords = computed(() => {
     if (activeTab.value !== 'All Accounts' && getCanonicalSubpage(record) !== activeTab.value) return false;
 
     // Search filters
-    if (filters.mobileNumber && !record.mobileNumber.includes(filters.mobileNumber)) return false;
-    if (filters.firstName && !record.firstName.toLowerCase().includes(filters.firstName.toLowerCase())) return false;
-    if (filters.lastName && !record.lastName.toLowerCase().includes(filters.lastName.toLowerCase())) return false;
-    if (filters.middleName && !record.middleName.toLowerCase().includes(filters.middleName.toLowerCase())) return false;
-    if (filters.idType && record.idType !== filters.idType) return false;
-    if (filters.progressStatus && record.progressStatus !== filters.progressStatus) return false;
+    if (filters.mobile_number && !record.mobile_number.includes(filters.mobile_number)) return false;
+    if (filters.first_name && !record.first_name.toLowerCase().includes(filters.first_name.toLowerCase())) return false;
+    if (filters.last_name && !record.last_name.toLowerCase().includes(filters.last_name.toLowerCase())) return false;
+    if (filters.middle_name && !record.middle_name.toLowerCase().includes(filters.middle_name.toLowerCase())) return false;
+    if (filters.id_type && record.id_type !== filters.id_type) return false;
+    if (filters.progress_status && record.progress_status !== filters.progress_status) return false;
     if (filters.dsp && record.dsp !== filters.dsp) return false;
-    if (filters.simStatus && record.simStatus !== filters.simStatus) return false;
-    if (filters.storeName && !record.storeName.toLowerCase().includes(filters.storeName.toLowerCase())) return false;
+    if (filters.sim_status && record.sim_status !== filters.sim_status) return false;
+    if (filters.store_name && !record.store_name.toLowerCase().includes(filters.store_name.toLowerCase())) return false;
     if (filters.remark && !record.remark.toLowerCase().includes(filters.remark.toLowerCase())) return false;
-    if (filters.submittedAt && record.submittedAt !== filters.submittedAt) return false;
-    if (filters.fullAddress && !record.fullAddress.toLowerCase().includes(filters.fullAddress.toLowerCase())) return false;
+    if (filters.submitted_at && record.submitted_at !== filters.submitted_at) return false;
+    if (filters.address_full && !record.address_full.toLowerCase().includes(filters.address_full.toLowerCase())) return false;
     if (filters.latitude && !record.latitude.includes(filters.latitude)) return false;
     if (filters.longitude && !record.longitude.includes(filters.longitude)) return false;
-    if (filters.mpin && !record.mpin.includes(filters.mpin)) return false;
+    if (filters.passwords && !record.passwords.includes(filters.passwords)) return false;
     
     // Checkbox filters
-    if (filters.hasDti && !record.hasDti) return false;
-    if (filters.hasSelfie && !record.hasSelfie) return false;
-    if (filters.hasStorePhoto && !record.hasStorePhoto) return false;
-    if (filters.onSystem && !record.onSystem) return false;
-    if (filters.hasSyncedGpo && !record.hasSyncedGpo) return false;
+    if (filters.dti_done && !record.dti_done) return false;
+    if (filters.selfie_done && !record.selfie_done) return false;
+    if (filters.store_photo_done && !record.store_photo_done) return false;
+    if (filters.is_on_system && !record.is_on_system) return false;
+    if (filters.synced_to_gpo && !record.synced_to_gpo) return false;
 
     return true;
   });
@@ -389,16 +404,16 @@ const handleBulkUpdate = async () => {
   try {
     const promises = selectedRecords.value.map(record => {
       const updates: any = {};
-      if (bulkFormData.idType) updates.idType = bulkFormData.idType;
-      if (bulkFormData.progressStatus) updates.progressStatus = bulkFormData.progressStatus;
+      if (bulkFormData.id_type) updates.id_type = bulkFormData.id_type;
+      if (bulkFormData.progress_status) updates.progress_status = bulkFormData.progress_status;
       if (bulkFormData.dsp) updates.dsp = bulkFormData.dsp;
-      if (bulkFormData.simStatus) updates.simStatus = bulkFormData.simStatus;
-      if (bulkFormData.mpin) updates.mpin = bulkFormData.mpin;
-      if (bulkFormData.hasDti !== null) updates.hasDti = bulkFormData.hasDti;
-      if (bulkFormData.hasSelfie !== null) updates.hasSelfie = bulkFormData.hasSelfie;
-      if (bulkFormData.hasStorePhoto !== null) updates.hasStorePhoto = bulkFormData.hasStorePhoto;
-      if (bulkFormData.onSystem !== null) updates.onSystem = bulkFormData.onSystem;
-      if (bulkFormData.hasSyncedGpo !== null) updates.hasSyncedGpo = bulkFormData.hasSyncedGpo;
+      if (bulkFormData.sim_status) updates.sim_status = bulkFormData.sim_status;
+      if (bulkFormData.passwords) updates.passwords = bulkFormData.passwords;
+      if (bulkFormData.dti_done !== null) updates.dti_done = bulkFormData.dti_done;
+      if (bulkFormData.selfie_done !== null) updates.selfie_done = bulkFormData.selfie_done;
+      if (bulkFormData.store_photo_done !== null) updates.store_photo_done = bulkFormData.store_photo_done;
+      if (bulkFormData.is_on_system !== null) updates.is_on_system = bulkFormData.is_on_system;
+      if (bulkFormData.synced_to_gpo !== null) updates.synced_to_gpo = bulkFormData.synced_to_gpo;
       
       return updateAccount(record.id, { ...record, ...updates });
     });
@@ -410,16 +425,16 @@ const handleBulkUpdate = async () => {
     selectedRecords.value = [];
     
     // Reset bulk form
-    bulkFormData.idType = '';
-    bulkFormData.progressStatus = '';
+    bulkFormData.id_type = '';
+    bulkFormData.progress_status = '';
     bulkFormData.dsp = '';
-    bulkFormData.simStatus = '';
-    bulkFormData.mpin = '';
-    bulkFormData.hasDti = null;
-    bulkFormData.hasSelfie = null;
-    bulkFormData.hasStorePhoto = null;
-    bulkFormData.onSystem = null;
-    bulkFormData.hasSyncedGpo = null;
+    bulkFormData.sim_status = '';
+    bulkFormData.passwords = '';
+    bulkFormData.dti_done = null;
+    bulkFormData.selfie_done = null;
+    bulkFormData.store_photo_done = null;
+    bulkFormData.is_on_system = null;
+    bulkFormData.synced_to_gpo = null;
   } catch (e) {
     ElMessage.error('Failed to update records in bulk');
   } finally {
@@ -430,10 +445,10 @@ const handleBulkUpdate = async () => {
 const checkAndAutoStatus = async (recordsList: AccountRecord[]) => {
   let updatedCount = 0;
   for (const record of recordsList) {
-    const info = getRemainingTime(record.submittedAt);
-    if (info?.isExpired && record.progressStatus !== 'Ready for KYC' && record.progressStatus !== 'Decommissioned') {
+    const info = getRemainingTime(record.submitted_at);
+    if (info?.isExpired && record.progress_status !== 'Ready for KYC' && record.progress_status !== 'Decommissioned') {
       try {
-        await updateAccount(record.id, { ...record, progressStatus: 'Ready for KYC' });
+        await updateAccount(record.id, { ...record, progress_status: 'Ready for KYC' });
         updatedCount++;
       } catch (e) {
         console.error('Auto status update failed for', record.id);
@@ -467,7 +482,7 @@ const clearFilters = () => {
 };
 
 const handleSaveRecord = async () => {
-  const mandatoryFields = ['mobileNumber', 'firstName', 'lastName', 'middleName', 'idType', 'progressStatus'];
+  const mandatoryFields = ['mobile_number', 'first_name', 'last_name', 'id_type', 'progress_status'];
   const missing = mandatoryFields.filter(f => !formData.value[f as keyof typeof formData.value]);
   if (missing.length > 0) {
     ElMessage.warning(`Please fill in all mandatory fields: ${missing.join(', ')}`);
@@ -516,6 +531,27 @@ const handleCancelEdit = () => {
   editFormData.value = null;
 };
 
+const handleDeleteItem = async (row: AccountRecord) => {
+  try {
+    await ElMessageBox.confirm(
+      t('pages.accountProgress.deleteConfirm'),
+      t('common.warning'),
+      {
+        confirmButtonText: t('common.delete'),
+        cancelButtonText: t('common.cancel'),
+        type: 'warning'
+      }
+    );
+    await deleteAccount(row.id);
+    ElMessage.success(t('pages.accountProgress.deleteSuccess'));
+    fetchRecords();
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(t('pages.accountProgress.deleteError'));
+    }
+  }
+};
+
 const getBadgeVariant = (status: string) => {
   if (['Fully Verified', 'Approved', 'Ready', 'Active'].includes(status)) return 'success';
   if (['Pending', 'Step 1 Done', 'Step 2 Done', 'Step 3 Done'].includes(status)) return 'warning';
@@ -543,36 +579,36 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex font-sans">
+  <div class="min-h-screen bg-[#f0f2f5] flex font-sans text-[#303133]">
     <!-- Sidebar -->
     <aside 
-      class="bg-white border-r border-gray-200 transition-all duration-300 flex flex-col z-40"
+      class="bg-[#001529] border-r border-gray-200 transition-all duration-300 flex flex-col z-40"
       :class="[isSidebarOpen ? 'w-64' : 'w-20']"
     >
-      <div class="p-6 flex items-center justify-between border-b border-gray-100 mb-6">
+      <div class="p-6 flex items-center justify-between border-b border-[#002140] mb-6">
         <div v-if="isSidebarOpen" class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+          <div class="w-8 h-8 bg-[#409eff] rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Building2 class="text-white" :size="18" />
           </div>
-          <span class="font-black text-gray-900 tracking-tighter text-xl">ProgressHQ</span>
+          <span class="font-bold text-white tracking-tight text-xl">ProgressHQ</span>
         </div>
-        <button @click="isSidebarOpen = !isSidebarOpen" class="p-2 hover:bg-gray-50 rounded-lg text-gray-400">
+        <button @click="isSidebarOpen = !isSidebarOpen" class="p-2 hover:bg-[#002140] rounded-lg text-gray-400">
           <Menu v-if="!isSidebarOpen" :size="20" />
           <X v-else :size="20" />
         </button>
       </div>
 
-      <nav class="flex-1 px-4 space-y-1">
-        <div v-if="isSidebarOpen" class="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Segmentation</div>
+      <nav class="flex-1 px-2 space-y-1">
+        <div v-if="isSidebarOpen" class="px-4 py-2 text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Segmentation</div>
         <button 
           v-for="tab in tabs" 
           :key="tab.id"
           @click="activeTab = tab.id"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group"
-          :class="[activeTab === tab.id ? 'bg-indigo-50 text-indigo-600 shadow-sm shadow-indigo-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900']"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group"
+          :class="[activeTab === tab.id ? 'bg-[#409eff] text-white shadow-md shadow-blue-500/20' : 'text-gray-400 hover:bg-[#002140] hover:text-white']"
         >
-          <component :is="tab.icon" :size="18" :class="[activeTab === tab.id ? tab.color : 'text-gray-400 group-hover:text-gray-600']" />
-          <span v-if="isSidebarOpen" class="text-sm font-semibold tracking-tight">{{ tab.label }}</span>
+          <component :is="tab.icon" :size="18" :class="[activeTab === tab.id ? 'text-white' : 'text-gray-400 group-hover:text-white']" />
+          <span v-if="isSidebarOpen" class="text-[13px] font-medium tracking-tight">{{ tab.label }}</span>
         </button>
       </nav>
     </aside>
@@ -580,324 +616,282 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
     <!-- Main Content -->
     <main class="flex-1 flex flex-col min-w-0">
       <!-- Header -->
-      <header class="bg-white px-10 py-8 flex items-center justify-between sticky top-0 z-30 shadow-sm border-b border-gray-100">
+      <header class="bg-white px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm border-b border-gray-100">
         <div>
-          <h1 class="text-2xl font-black text-gray-900 tracking-tight mb-1">Account Progress</h1>
-          <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{{ activeTab }}</p>
+          <h1 class="text-xl font-bold text-[#1f2f3d] tracking-tight">Account Progress</h1>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
           <button 
             v-if="selectedRecords.length > 0"
             @click="isBulkModalOpen = true"
-            class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-black flex items-center gap-2 border border-indigo-200 transition-all uppercase tracking-widest mr-4"
+            class="px-4 py-1.5 bg-amber-500 text-white hover:bg-amber-600 rounded text-[13px] font-medium flex items-center gap-2 transition-all"
           >
             <Edit2 :size="14" />
-            Bulk Edit ({{ selectedRecords.length }})
+            {{ t('common.edit') }} ({{ selectedRecords.length }})
           </button>
-          <button class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl text-xs font-bold flex items-center gap-2 border border-gray-200 transition-all">
-            <FileUp :size="16" />
-            Batch Import
+          <button class="px-4 py-1.5 bg-[#409eff] text-white hover:bg-[#66b1ff] rounded text-[13px] font-medium flex items-center gap-2 transition-all">
+            <FileUp :size="14" />
+            {{ t('common.batchImport') }}
           </button>
-          <button class="px-4 py-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-2 border border-emerald-100 transition-all">
-            <FileDown :size="16" />
-            Export CSV
+          <button class="px-4 py-1.5 bg-[#67c23a] text-white hover:bg-[#85ce61] rounded text-[13px] font-medium flex items-center gap-2 transition-all">
+            <FileDown :size="14" />
+            {{ t('common.exportCsv') }}
           </button>
-          <button @click="isAddModalOpen = true" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all text-xs font-bold ml-2">
-            <Plus :size="16" />
-            Add Record
+          <button @click="isAddModalOpen = true" class="px-4 py-1.5 bg-[#409eff] text-white rounded shadow-sm flex items-center gap-2 hover:bg-[#66b1ff] active:scale-95 transition-all text-[13px] font-medium">
+            <Plus :size="14" />
+            {{ t('common.create') }}
           </button>
         </div>
       </header>
 
       <!-- Content Area -->
-      <div class="p-10 space-y-8">
-        <!-- Deep Filter Card -->
-        <section class="bg-white rounded-[2rem] border border-gray-200 p-8 shadow-sm">
-          <div class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-3">
-              <div class="p-2 bg-indigo-50 rounded-lg">
-                <ListFilter class="text-indigo-600" :size="20" />
-              </div>
-              <h2 class="font-bold text-gray-900 tracking-tight">Deep Filter</h2>
+      <div class="p-6 space-y-4">
+        <!-- Filter Section -->
+        <section class="bg-white rounded-md border border-gray-200 p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+              <ListFilter class="text-[#409eff]" :size="18" />
+              <h2 class="text-[14px] font-bold text-[#1f2f3d]">Deep Filter</h2>
             </div>
-            <button @click="clearFilters" class="text-rose-600 hover:text-rose-700 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all">
+            <button @click="clearFilters" class="text-[#f56c6c] hover:text-[#f78989] text-[12px] font-medium flex items-center gap-1.5 transition-all">
               <RotateCcw :size="14" />
-              Clear All Filters
+              {{ t('common.reset') }}
             </button>
           </div>
 
-          <div class="grid grid-cols-5 gap-6 mb-8">
-            <div v-if="isFilterFieldVisible('mobileNumber')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mobile Number</label>
-              <el-input v-model="filters.mobileNumber" placeholder="09..." />
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 mb-6">
+            <div v-if="isFilterFieldVisible('mobile_number')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.mobileNumber') }}</label>
+              <el-input v-model="filters.mobile_number" placeholder="09XXXXXXXXX" />
             </div>
-            <div v-if="isFilterFieldVisible('firstName')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">First Name</label>
-              <el-input v-model="filters.firstName" placeholder="Search name..." />
+            <div v-if="isFilterFieldVisible('first_name')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.firstName') }}</label>
+              <el-input v-model="filters.first_name" placeholder="First Name" />
             </div>
-            <div v-if="isFilterFieldVisible('lastName')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Last Name</label>
-              <el-input v-model="filters.lastName" placeholder="Search name..." />
+            <div v-if="isFilterFieldVisible('last_name')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.lastName') }}</label>
+              <el-input v-model="filters.last_name" placeholder="Last Name" />
             </div>
-            <div v-if="isFilterFieldVisible('middleName')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Middle Name</label>
-              <el-input v-model="filters.middleName" placeholder="Search name..." />
+            <div v-if="isFilterFieldVisible('middle_name')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.middleName') }}</label>
+              <el-input v-model="filters.middle_name" placeholder="Middle Name" />
             </div>
-            <div v-if="isFilterFieldVisible('idType')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ID Type</label>
-              <el-select v-model="filters.idType" placeholder="All ID Types" class="w-full" clearable>
+            <div v-if="isFilterFieldVisible('id_type')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.idType') }}</label>
+              <el-select v-model="filters.id_type" placeholder="Select ID Type" class="w-full" clearable>
                 <el-option v-for="opt in idTypeOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
-            <div v-if="isFilterFieldVisible('progressStatus')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Progress Status</label>
-              <el-select v-model="filters.progressStatus" placeholder="All Statuses" class="w-full" clearable>
+            <div v-if="isFilterFieldVisible('progress_status')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.progressStatus') }}</label>
+              <el-select v-model="filters.progress_status" placeholder="Select Status" class="w-full" clearable>
                 <el-option v-for="opt in progressStatusOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
-            <div v-if="isFilterFieldVisible('submittedAt')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Submitted At</label>
-              <el-date-picker v-model="filters.submittedAt" type="date" value-format="YYYY-MM-DD" placeholder="dd/mm/yyyy" class="!w-full" />
+            <div v-if="isFilterFieldVisible('submitted_at')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.submittedAt') }}</label>
+              <el-date-picker v-model="filters.submitted_at" type="date" value-format="YYYY-MM-DD" placeholder="dd/mm/yyyy" class="!w-full" />
             </div>
-            <div v-if="isFilterFieldVisible('dsp')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">DSP</label>
-              <el-select v-model="filters.dsp" placeholder="All DSPs" class="w-full" clearable>
+            <div v-if="isFilterFieldVisible('dsp')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.dsp') }}</label>
+              <el-select v-model="filters.dsp" placeholder="Select DSP" class="w-full" clearable>
                 <el-option v-for="opt in dspOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
-            <div v-if="isFilterFieldVisible('storeName')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Store Name</label>
-              <el-input v-model="filters.storeName" placeholder="Search store..." />
+            <div v-if="isFilterFieldVisible('store_name')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.storeName') }}</label>
+              <el-input v-model="filters.store_name" placeholder="Search store name" />
             </div>
-            <div v-if="isFilterFieldVisible('fullAddress')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Full Address</label>
-              <el-input v-model="filters.fullAddress" placeholder="Search address..." />
+            <div v-if="isFilterFieldVisible('address_full')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.addressFull') }}</label>
+              <el-input v-model="filters.address_full" placeholder="Search address" />
             </div>
-            <div v-if="isFilterFieldVisible('latitude')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Latitude</label>
-              <el-input v-model="filters.latitude" placeholder="Search lat..." />
+            <div v-if="isFilterFieldVisible('latitude')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.latitude') }}</label>
+              <el-input v-model="filters.latitude" placeholder="Search latitude" />
             </div>
-            <div v-if="isFilterFieldVisible('longitude')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Longitude</label>
-              <el-input v-model="filters.longitude" placeholder="Search lng..." />
+            <div v-if="isFilterFieldVisible('longitude')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.longitude') }}</label>
+              <el-input v-model="filters.longitude" placeholder="Search longitude" />
             </div>
-            <div v-if="isFilterFieldVisible('simStatus')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">SIM Status</label>
-              <el-select v-model="filters.simStatus" placeholder="All States" class="w-full" clearable>
+            <div v-if="isFilterFieldVisible('sim_status')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.simStatus') }}</label>
+              <el-select v-model="filters.sim_status" placeholder="Select SIM Status" class="w-full" clearable>
                 <el-option v-for="opt in simStatusOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
-            <div v-if="isFilterFieldVisible('mpin')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">MPIN</label>
-              <el-input v-model="filters.mpin" placeholder="Search mpin..." />
+            <div v-if="isFilterFieldVisible('passwords')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('pages.accountProgress.passwords') }}</label>
+              <el-input v-model="filters.passwords" placeholder="Search Password" />
             </div>
-            <div v-if="isFilterFieldVisible('remark')" class="space-y-1.5">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Remark</label>
-              <el-input v-model="filters.remark" placeholder="Search remark..." />
+            <div v-if="isFilterFieldVisible('remark')" class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-[#606266]">{{ t('common.remark') }}</label>
+              <el-input v-model="filters.remark" placeholder="Search remark" />
             </div>
           </div>
 
-          <div class="space-y-6">
-            <div class="flex flex-wrap gap-8 py-6 border-y border-gray-100">
-              <el-checkbox v-if="isFilterFieldVisible('hasDti')" v-model="filters.hasDti" label="DTI" />
-              <el-checkbox v-if="isFilterFieldVisible('hasSelfie')" v-model="filters.hasSelfie" label="SELFIE" />
-              <el-checkbox v-if="isFilterFieldVisible('hasStorePhoto')" v-model="filters.hasStorePhoto" label="STORE" />
-              <el-checkbox v-if="isFilterFieldVisible('onSystem')" v-model="filters.onSystem" label="IN SYSTEM" />
-              <el-checkbox v-if="isFilterFieldVisible('hasSyncedGpo')" v-model="filters.hasSyncedGpo" label="SYNCED GPO" />
+          <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100">
+            <div class="flex flex-wrap gap-6">
+              <el-checkbox v-if="isFilterFieldVisible('dti_done')" v-model="filters.dti_done" :label="t('pages.accountProgress.dti')" />
+              <el-checkbox v-if="isFilterFieldVisible('selfie_done')" v-model="filters.selfie_done" :label="t('pages.accountProgress.selfie')" />
+              <el-checkbox v-if="isFilterFieldVisible('store_photo_done')" v-model="filters.store_photo_done" :label="t('pages.accountProgress.storePhoto')" />
+              <el-checkbox v-if="isFilterFieldVisible('is_on_system')" v-model="filters.is_on_system" :label="t('pages.accountProgress.onSystem')" />
+              <el-checkbox v-if="isFilterFieldVisible('synced_to_gpo')" v-model="filters.synced_to_gpo" :label="t('pages.accountProgress.syncedToGpo')" />
             </div>
-            
-            <div class="flex items-center justify-between">
-              <div v-if="isFilterFieldVisible('remark')" class="w-2/3">
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Remark</label>
-                <el-input v-model="filters.remark" placeholder="Search remark..." />
-              </div>
-              <button class="px-8 py-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100 text-xs font-bold hover:bg-indigo-700 transition-all active:scale-95 ml-auto">
-                Apply Filters
-              </button>
-            </div>
+            <button class="px-8 py-2 bg-[#409eff] text-white rounded shadow-sm text-[13px] font-medium hover:bg-[#66b1ff] active:scale-95 transition-all">
+              {{ t('common.search') }}
+            </button>
           </div>
         </section>
 
         <!-- Table Card -->
-        <section class="bg-white rounded-[2rem] border border-gray-200 shadow-sm flex flex-col overflow-hidden min-h-[500px]">
+        <section class="bg-white rounded-md border border-gray-200 shadow-sm flex flex-col overflow-hidden min-h-[500px]">
           <div class="flex-1 overflow-auto">
             <el-table 
               v-loading="isLoading"
               :data="filteredRecords" 
               style="width: 100%"
               class="custom-table"
+              header-cell-class-name="custom-table-header"
               @selection-change="(val: any) => selectedRecords = val"
             >
               <el-table-column type="selection" width="55" fixed />
               
-              <el-table-column v-if="isColumnVisible('mobileNumber')" prop="mobileNumber" label="Mobile Number" width="160">
+              <el-table-column type="selection" width="55" fixed />
+              
+              <el-table-column v-if="isColumnVisible('mobile_number')" prop="mobile_number" :label="t('pages.accountProgress.mobileNumber')" width="160" sortable>
                 <template #default="{ row }">
-                  <div class="text-sm font-bold text-gray-900 tracking-tight">{{ row.mobileNumber }}</div>
+                  <div class="text-sm font-bold text-gray-900 tracking-tight">{{ row.mobile_number }}</div>
+                </template>
+              </el-table-column>
+              
+              <el-table-column v-if="isColumnVisible('first_name')" prop="first_name" :label="t('pages.accountProgress.firstName')" width="140" sortable>
+                <template #default="{ row }">
+                  <span class="text-sm font-semibold text-gray-700">{{ row.first_name }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('firstName')" prop="firstName" label="First Name" width="140">
+              <el-table-column v-if="isColumnVisible('last_name')" prop="last_name" :label="t('pages.accountProgress.lastName')" width="140" sortable>
                 <template #default="{ row }">
-                  <span class="text-sm font-semibold text-gray-700">{{ row.firstName }}</span>
+                  <span class="text-sm font-semibold text-gray-700">{{ row.last_name }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('lastName')" prop="lastName" label="Last Name" width="140">
+              <el-table-column v-if="isColumnVisible('middle_name')" prop="middle_name" :label="t('pages.accountProgress.middleName')" width="140" sortable>
                 <template #default="{ row }">
-                  <span class="text-sm font-semibold text-gray-700">{{ row.lastName }}</span>
+                  <span class="text-sm font-semibold text-gray-700">{{ row.middle_name }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('middleName')" prop="middleName" label="Middle Name" width="140">
+              <el-table-column v-if="isColumnVisible('id_type')" prop="id_type" :label="t('pages.accountProgress.idType')" width="140" sortable>
                 <template #default="{ row }">
-                  <span class="text-sm font-medium text-gray-500">{{ row.middleName }}</span>
+                  <span class="text-[10px] font-black uppercase text-gray-400 tracking-wider">{{ row.id_type }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('idType')" prop="idType" label="ID Type" width="140">
+              <el-table-column v-if="isColumnVisible('progress_status')" prop="progress_status" :label="t('pages.accountProgress.progressStatus')" width="160" sortable>
                 <template #default="{ row }">
-                  <span class="text-[10px] font-black uppercase text-gray-400 tracking-wider">{{ row.idType }}</span>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="isColumnVisible('progressStatus')" prop="progressStatus" label="Progress Status" width="160">
-                <template #default="{ row }">
-                  <el-tag :type="getBadgeVariant(row.progressStatus)" round effect="plain" class="!px-4 font-bold border-none bg-opacity-70">
-                    {{ row.progressStatus }}
+                  <el-tag :type="getBadgeVariant(row.progress_status)" round effect="plain" class="!px-4 font-bold border-none bg-opacity-70">
+                    {{ row.progress_status }}
                   </el-tag>
                 </template>
               </el-table-column>
 
-               <el-table-column v-if="isColumnVisible('submittedAt')" prop="submittedAt" label="Submitted At" width="180">
+               <el-table-column v-if="isColumnVisible('submitted_at')" prop="submitted_at" :label="t('pages.accountProgress.submittedAt')" width="180" sortable>
                 <template #default="{ row }">
                    <div class="flex flex-col">
-                      <span class="text-xs font-bold text-gray-600">{{ row.submittedAt }}</span>
-                      <span v-if="getRemainingTime(row.submittedAt)?.text" 
+                      <span class="text-xs font-bold text-gray-600">{{ row.submitted_at }}</span>
+                      <span v-if="getRemainingTime(row.submitted_at)?.text" 
                             class="text-[9px] font-bold mt-0.5"
-                            :class="getRemainingTime(row.submittedAt)?.isExpired ? 'text-rose-500' : 'text-amber-500'"
+                            :class="getRemainingTime(row.submitted_at)?.isExpired ? 'text-rose-500' : 'text-amber-500'"
                       >
-                        {{ getRemainingTime(row.submittedAt)?.text }}
+                        {{ getRemainingTime(row.submitted_at)?.text }}
                       </span>
                    </div>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('dsp')" prop="dsp" label="DSP" width="140">
+              <el-table-column v-if="isColumnVisible('dsp')" prop="dsp" :label="t('pages.accountProgress.dsp')" width="140" sortable>
                 <template #default="{ row }">
                   <span class="text-sm font-black text-indigo-600">{{ row.dsp }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('storeName')" prop="storeName" label="Store Name" width="200">
+              <el-table-column v-if="isColumnVisible('store_name')" prop="store_name" :label="t('pages.accountProgress.storeName')" width="200">
                 <template #default="{ row }">
-                  <span class="text-xs font-bold text-gray-800">{{ row.storeName }}</span>
+                  <span class="text-xs font-bold text-gray-800">{{ row.store_name }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('fullAddress')" prop="fullAddress" label="Full Address" width="280">
+              <el-table-column v-if="isColumnVisible('address_full')" prop="address_full" :label="t('pages.accountProgress.addressFull')" width="280">
                 <template #default="{ row }">
-                  <span class="text-[10px] font-medium text-gray-400 italic truncate block w-full">{{ row.fullAddress }}</span>
+                  <span class="text-[10px] font-medium text-gray-400 italic truncate block w-full">{{ row.address_full }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('latitude')" prop="latitude" label="Latitude" width="140">
+              <el-table-column v-if="isColumnVisible('latitude')" prop="latitude" :label="t('pages.accountProgress.latitude')" width="140">
                 <template #default="{ row }">
                   <span class="text-[10px] font-mono text-gray-400">{{ row.latitude }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('longitude')" prop="longitude" label="Longitude" width="140">
+              <el-table-column v-if="isColumnVisible('longitude')" prop="longitude" :label="t('pages.accountProgress.longitude')" width="140">
                 <template #default="{ row }">
                   <span class="text-[10px] font-mono text-gray-400">{{ row.longitude }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('simStatus')" prop="simStatus" label="SIM Status" width="140">
+              <el-table-column v-if="isColumnVisible('sim_status')" prop="sim_status" :label="t('pages.accountProgress.simStatus')" width="140" sortable>
                 <template #default="{ row }">
-                  <el-tag :type="getBadgeVariant(row.simStatus)" effect="dark" size="small" class="!px-3 !h-6 !text-[10px] font-black border-none">
-                    {{ row.simStatus }}
+                  <el-tag :type="getBadgeVariant(row.sim_status)" effect="dark" size="small" class="!px-3 !h-6 !text-[10px] font-black border-none">
+                    {{ row.sim_status }}
                   </el-tag>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('mpin')" prop="mpin" label="MPIN" width="120">
+              <el-table-column v-if="isColumnVisible('passwords')" prop="passwords" :label="t('pages.accountProgress.passwords')" width="120">
                 <template #default="{ row }">
-                  <span class="text-xs font-mono font-bold text-gray-500">{{ row.mpin }}</span>
+                  <span class="text-xs font-mono font-bold text-gray-500">{{ row.passwords }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('hasDti')" prop="hasDti" label="DTI" width="100">
-                <template #default="{ row }">
-                   <div v-if="row.hasDti" class="text-emerald-600 text-[10px] font-black uppercase">Yes</div>
-                   <div v-else class="text-gray-300 text-[10px] font-bold">No</div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="isColumnVisible('hasSelfie')" prop="hasSelfie" label="Selfie" width="100">
-                <template #default="{ row }">
-                   <div v-if="row.hasSelfie" class="text-sky-600 text-[10px] font-black uppercase">Yes</div>
-                   <div v-else class="text-gray-300 text-[10px] font-bold">No</div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="isColumnVisible('hasStorePhoto')" prop="hasStorePhoto" label="Store" width="100">
-                <template #default="{ row }">
-                   <div v-if="row.hasStorePhoto" class="text-amber-600 text-[10px] font-black uppercase">Yes</div>
-                   <div v-else class="text-gray-300 text-[10px] font-bold">No</div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="isColumnVisible('onSystem')" prop="onSystem" label="In System" width="100">
-                <template #default="{ row }">
-                   <div v-if="row.onSystem" class="text-indigo-600 text-[10px] font-black uppercase">Yes</div>
-                   <div v-else class="text-gray-300 text-[10px] font-bold">No</div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="isColumnVisible('hasSyncedGpo')" prop="hasSyncedGpo" label="Synced to GPO" width="120">
-                <template #default="{ row }">
-                   <div v-if="row.hasSyncedGpo" class="text-purple-600 text-[10px] font-black uppercase">Yes</div>
-                   <div v-else class="text-gray-300 text-[10px] font-bold">No</div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="isColumnVisible('documentation')" label="Documentation" width="220">
+              <el-table-column v-if="isColumnVisible('documentation')" :label="t('pages.accountProgress.title')" width="220">
                 <template #default="{ row }">
                    <div class="flex flex-wrap gap-2">
-                      <div v-if="row.hasDti" class="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-bold border border-emerald-100">
+                      <div v-if="row.dti_done" class="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-bold border border-emerald-100">
                         <CheckCircle2 :size="10" /> DTI
                       </div>
-                      <div v-if="row.hasSelfie" class="flex items-center gap-1 px-2 py-1 bg-sky-50 text-sky-600 rounded text-[9px] font-bold border border-sky-100">
+                      <div v-if="row.selfie_done" class="flex items-center gap-1 px-2 py-1 bg-sky-50 text-sky-600 rounded text-[9px] font-bold border border-sky-100">
                         <Users :size="10" /> SELFIE
                       </div>
-                      <div v-if="row.hasStorePhoto" class="flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-600 rounded text-[9px] font-bold border border-amber-100">
+                      <div v-if="row.store_photo_done" class="flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-600 rounded text-[9px] font-bold border border-amber-100">
                         <Building2 :size="10" /> STORE
                       </div>
-                      <div v-if="row.onSystem" class="flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[9px] font-bold border border-indigo-100">
+                      <div v-if="row.is_on_system" class="flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[9px] font-bold border border-indigo-100">
                         <LayoutDashboard :size="10" /> SYS
                       </div>
-                      <div v-if="row.hasSyncedGpo" class="flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-600 rounded text-[9px] font-bold border border-purple-100">
+                      <div v-if="row.synced_to_gpo" class="flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-600 rounded text-[9px] font-bold border border-purple-100">
                         <RotateCcw :size="10" /> GPO
                       </div>
                    </div>
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('remark')" prop="remark" label="Remark" min-width="180">
+              <el-table-column v-if="isColumnVisible('remark')" prop="remark" :label="t('common.remark')" min-width="180">
                 <template #default="{ row }">
                   <span class="text-xs font-medium text-gray-500">{{ row.remark }}</span>
                 </template>
               </el-table-column>
 
-              <el-table-column label="Actions" width="160" fixed="right">
+              <el-table-column :label="t('common.actions')" width="160" fixed="right">
                 <template #default="{ row }">
                    <div class="flex items-center gap-2">
                       <button @click="handleEditRow(row)" class="text-[10px] font-black text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-all uppercase tracking-widest">
                         EDIT
                       </button>
-                      <button @click="handleSaveRow" class="text-[10px] font-black text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 transition-all uppercase tracking-widest">
-                        SAVE
+                      <button @click="ElMessageBox.confirm('Delete this record?', 'Warning', { type: 'warning' }).then(() => deleteAccount(row.id)).then(() => fetchRecords())" class="text-[10px] font-black text-rose-600 hover:text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100 transition-all uppercase tracking-widest">
+                        DELETE
                       </button>
                    </div>
                 </template>
@@ -934,7 +928,7 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
     <!-- Add Record Modal -->
     <el-dialog
       v-model="isAddModalOpen"
-      title="Add Record"
+      :title="t('common.create')"
       width="850px"
       class="custom-dialog"
       :close-on-click-modal="false"
@@ -942,79 +936,79 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
       <div class="p-8 space-y-6">
           <div class="grid grid-cols-2 gap-x-8 gap-y-4">
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mobile Number *</label>
-              <el-input v-model="formData.mobileNumber" placeholder="09XXXXXXXXX" :class="{'duplicate-input': isPhoneNumberDuplicate}" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.mobileNumber') }} *</label>
+              <el-input v-model="formData.mobile_number" placeholder="09XXXXXXXXX" :class="{'duplicate-input': isPhoneNumberDuplicate}" />
               <div v-if="isPhoneNumberDuplicate" class="mt-1 p-2 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-2">
                 <AlertCircle class="text-rose-600" :size="12" />
                 <span class="text-[10px] font-bold text-rose-600 uppercase tracking-tight">Number already registered</span>
               </div>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">First Name *</label>
-              <el-input v-model="formData.firstName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.firstName') }} *</label>
+              <el-input v-model="formData.first_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last Name *</label>
-              <el-input v-model="formData.lastName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.lastName') }} *</label>
+              <el-input v-model="formData.last_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Middle Name *</label>
-              <el-input v-model="formData.middleName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.middleName') }}</label>
+              <el-input v-model="formData.middle_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ID Type *</label>
-              <el-select v-model="formData.idType" class="w-full">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.idType') }} *</label>
+              <el-select v-model="formData.id_type" class="w-full">
                 <el-option v-for="opt in idTypeOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Progress Status *</label>
-              <el-select v-model="formData.progressStatus" class="w-full">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.progressStatus') }} *</label>
+              <el-select v-model="formData.progress_status" class="w-full">
                  <el-option v-for="opt in progressStatusOptions" :key="opt" :label="opt" :value="opt" :disabled="isStatusDisabled(opt, formData)" />
               </el-select>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Submitted At</label>
-              <el-date-picker v-model="formData.submittedAt" type="date" value-format="YYYY-MM-DD" class="w-full" />
-              <div v-if="countdownText" class="mt-1 p-2 rounded text-[10px] font-bold flex items-center gap-1" :class="isExpired ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'">
-                <Clock :size="12" /> {{ countdownText }}
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.submittedAt') }}</label>
+              <el-date-picker v-model="formData.submitted_at" type="date" value-format="YYYY-MM-DD" class="w-full" />
+              <div v-if="getRemainingTime(formData.submitted_at)?.text" class="mt-1 p-2 rounded text-[10px] font-bold flex items-center gap-1" :class="getRemainingTime(formData.submitted_at)?.isExpired ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'">
+                <Clock :size="12" /> {{ getRemainingTime(formData.submitted_at)?.text }}
               </div>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">DSP</label>
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.dsp') }}</label>
               <el-select v-model="formData.dsp" class="w-full" placeholder="Select DSP">
                  <el-option v-for="opt in dspOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Store Name</label>
-              <el-input v-model="formData.storeName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.storeName') }}</label>
+              <el-input v-model="formData.store_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SIM Status</label>
-              <el-select v-model="formData.simStatus" class="w-full">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.simStatus') }}</label>
+              <el-select v-model="formData.sim_status" class="w-full">
                  <el-option v-for="opt in simStatusOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
           </div>
 
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Full Address</label>
-            <el-input v-model="formData.fullAddress" type="textarea" :rows="2" placeholder="Start typing address..." />
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.addressFull') }}</label>
+            <el-input v-model="formData.address_full" type="textarea" :rows="2" placeholder="Start typing address..." />
           </div>
 
           <div class="grid grid-cols-3 gap-4">
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Latitude</label>
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.latitude') }}</label>
               <el-input v-model="formData.latitude" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Longitude</label>
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.longitude') }}</label>
               <el-input v-model="formData.longitude" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">MPIN</label>
-              <el-input v-model="formData.mpin" placeholder="4-digit MPIN" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.passwords') }}</label>
+              <el-input v-model="formData.passwords" placeholder="Password" />
             </div>
           </div>
 
@@ -1038,23 +1032,23 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
           </div>
 
           <div class="grid grid-cols-5 gap-4 py-6 border-y border-gray-100">
-             <el-checkbox v-model="formData.hasDti" label="DTI" />
-             <el-checkbox v-model="formData.hasSelfie" label="Selfie" />
-             <el-checkbox v-model="formData.hasStorePhoto" label="Store" />
-             <el-checkbox v-model="formData.onSystem" label="SYS" />
-             <el-checkbox v-model="formData.hasSyncedGpo" label="GPO" />
+             <el-checkbox v-model="formData.dti_done" :label="t('pages.accountProgress.dti')" />
+             <el-checkbox v-model="formData.selfie_done" :label="t('pages.accountProgress.selfie')" />
+             <el-checkbox v-model="formData.store_photo_done" :label="t('pages.accountProgress.storePhoto')" />
+             <el-checkbox v-model="formData.is_on_system" :label="t('pages.accountProgress.onSystem')" />
+             <el-checkbox v-model="formData.synced_to_gpo" :label="t('pages.accountProgress.syncedToGpo')" />
           </div>
 
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Remark</label>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('common.remark') }}</label>
             <el-input v-model="formData.remark" type="textarea" :rows="3" />
           </div>
       </div>
 
       <template #footer>
         <div class="flex justify-end gap-3 px-8 py-6 bg-gray-50 border-t border-gray-100">
-          <el-button @click="isAddModalOpen = false" class="!rounded-xl text-xs font-bold">Cancel</el-button>
-          <el-button type="primary" class="!bg-indigo-600 !rounded-xl text-xs font-bold shadow-lg shadow-indigo-100" @click="handleSaveRecord">Save Record</el-button>
+          <el-button @click="isAddModalOpen = false" class="!rounded-xl text-xs font-bold">{{ t('common.cancel') }}</el-button>
+          <el-button type="primary" class="!bg-indigo-600 !rounded-xl text-xs font-bold shadow-lg shadow-indigo-100" @click="handleSaveRecord">{{ t('common.save') }}</el-button>
         </div>
       </template>
     </el-dialog>
@@ -1062,7 +1056,7 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
     <!-- Edit Dialog -->
     <el-dialog
       v-model="isEditModalOpen"
-      title="Edit Account Details"
+      :title="t('common.edit')"
       width="850px"
       class="custom-dialog"
       :before-close="handleCancelEdit"
@@ -1070,75 +1064,75 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
       <div v-if="editFormData" class="p-8 space-y-6">
           <div class="grid grid-cols-2 gap-x-8 gap-y-4">
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mobile Number</label>
-              <el-input v-model="editFormData.mobileNumber" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.mobileNumber') }}</label>
+              <el-input v-model="editFormData.mobile_number" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">First Name</label>
-              <el-input v-model="editFormData.firstName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.firstName') }}</label>
+              <el-input v-model="editFormData.first_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last Name</label>
-              <el-input v-model="editFormData.lastName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.lastName') }}</label>
+              <el-input v-model="editFormData.last_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Middle Name</label>
-              <el-input v-model="editFormData.middleName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.middleName') }}</label>
+              <el-input v-model="editFormData.middle_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ID Type</label>
-              <el-select v-model="editFormData.idType" class="w-full">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.idType') }}</label>
+              <el-select v-model="editFormData.id_type" class="w-full">
                 <el-option v-for="opt in idTypeOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Progress Status</label>
-              <el-select v-model="editFormData.progressStatus" class="w-full">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.progressStatus') }}</label>
+              <el-select v-model="editFormData.progress_status" class="w-full">
                  <el-option v-for="opt in progressStatusOptions" :key="opt" :label="opt" :value="opt" :disabled="isStatusDisabled(opt, editFormData)" />
               </el-select>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Submitted At</label>
-              <el-date-picker v-model="editFormData.submittedAt" type="date" value-format="YYYY-MM-DD" class="w-full" />
-              <div v-if="getRemainingTime(editFormData.submittedAt)?.text" class="mt-1 p-2 rounded text-[10px] font-bold flex items-center gap-1" :class="getRemainingTime(editFormData.submittedAt)?.isExpired ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'">
-                <Clock :size="12" /> {{ getRemainingTime(editFormData.submittedAt)?.text }}
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.submittedAt') }}</label>
+              <el-date-picker v-model="editFormData.submitted_at" type="date" value-format="YYYY-MM-DD" class="w-full" />
+              <div v-if="getRemainingTime(editFormData.submitted_at)?.text" class="mt-1 p-2 rounded text-[10px] font-bold flex items-center gap-1" :class="getRemainingTime(editFormData.submitted_at)?.isExpired ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'">
+                <Clock :size="12" /> {{ getRemainingTime(editFormData.submitted_at)?.text }}
               </div>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">DSP</label>
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.dsp') }}</label>
               <el-select v-model="editFormData.dsp" class="w-full" placeholder="Select DSP">
                  <el-option v-for="opt in dspOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Store Name</label>
-              <el-input v-model="editFormData.storeName" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.storeName') }}</label>
+              <el-input v-model="editFormData.store_name" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SIM Status</label>
-              <el-select v-model="editFormData.simStatus" class="w-full">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.simStatus') }}</label>
+              <el-select v-model="editFormData.sim_status" class="w-full">
                  <el-option v-for="opt in simStatusOptions" :key="opt" :label="opt" :value="opt" />
               </el-select>
             </div>
           </div>
 
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Full Address</label>
-            <el-input v-model="editFormData.fullAddress" type="textarea" :rows="2" />
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.addressFull') }}</label>
+            <el-input v-model="editFormData.address_full" type="textarea" :rows="2" />
           </div>
 
           <div class="grid grid-cols-3 gap-4">
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Latitude</label>
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.latitude') }}</label>
               <el-input v-model="editFormData.latitude" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Longitude</label>
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.longitude') }}</label>
               <el-input v-model="editFormData.longitude" />
             </div>
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">MPIN</label>
-              <el-input v-model="editFormData.mpin" placeholder="4-digit MPIN" />
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.passwords') }}</label>
+              <el-input v-model="editFormData.passwords" placeholder="Password" />
             </div>
           </div>
 
@@ -1162,22 +1156,22 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
           </div>
 
           <div class="grid grid-cols-5 gap-4 py-6 border-y border-gray-100">
-             <el-checkbox v-model="editFormData.hasDti" label="DTI" />
-             <el-checkbox v-model="editFormData.hasSelfie" label="Selfie" />
-             <el-checkbox v-model="editFormData.hasStorePhoto" label="Store" />
-             <el-checkbox v-model="editFormData.onSystem" label="SYS" />
-             <el-checkbox v-model="editFormData.hasSyncedGpo" label="GPO" />
+             <el-checkbox v-model="editFormData.dti_done" :label="t('pages.accountProgress.dti')" />
+             <el-checkbox v-model="editFormData.selfie_done" :label="t('pages.accountProgress.selfie')" />
+             <el-checkbox v-model="editFormData.store_photo_done" :label="t('pages.accountProgress.storePhoto')" />
+             <el-checkbox v-model="editFormData.is_on_system" :label="t('pages.accountProgress.onSystem')" />
+             <el-checkbox v-model="editFormData.synced_to_gpo" :label="t('pages.accountProgress.syncedToGpo')" />
           </div>
 
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Remark</label>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('common.remark') }}</label>
             <el-input v-model="editFormData.remark" type="textarea" :rows="3" />
           </div>
       </div>
       <template #footer>
         <div class="flex justify-end gap-3 px-8 py-6 bg-gray-50 border-t border-gray-100">
-          <el-button @click="handleCancelEdit" class="!rounded-xl text-xs font-bold">Cancel</el-button>
-          <el-button type="primary" class="!bg-indigo-600 !rounded-xl text-xs font-bold shadow-lg shadow-indigo-100" @click="handleSaveRow">Save Record</el-button>
+          <el-button @click="handleCancelEdit" class="!rounded-xl text-xs font-bold">{{ t('common.cancel') }}</el-button>
+          <el-button type="primary" class="!bg-indigo-600 !rounded-xl text-xs font-bold shadow-lg shadow-indigo-100" @click="handleSaveRow">{{ t('common.save') }}</el-button>
         </div>
       </template>
     </el-dialog>
@@ -1185,7 +1179,7 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
     <!-- Bulk Edit Modal -->
     <el-dialog
       v-model="isBulkModalOpen"
-      title="Bulk Edit Records"
+      :title="t('pages.accountProgress.bulkUpdate')"
       width="600px"
       class="custom-dialog"
     >
@@ -1199,74 +1193,69 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ID Type</label>
-            <el-select v-model="bulkFormData.idType" class="w-full" clearable placeholder="No change">
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.idType') }}</label>
+            <el-select v-model="bulkFormData.id_type" class="w-full" clearable placeholder="No change">
               <el-option v-for="opt in idTypeOptions" :key="opt" :label="opt" :value="opt" />
             </el-select>
           </div>
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Progress Status</label>
-            <el-select v-model="bulkFormData.progressStatus" class="w-full" clearable placeholder="No change">
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.progressStatus') }}</label>
+            <el-select v-model="bulkFormData.progress_status" class="w-full" clearable placeholder="No change">
               <el-option v-for="opt in progressStatusOptions" :key="opt" :label="opt" :value="opt" />
             </el-select>
           </div>
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">DSP</label>
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.dsp') }}</label>
             <el-select v-model="bulkFormData.dsp" class="w-full" clearable placeholder="No change">
               <el-option v-for="opt in dspOptions" :key="opt" :label="opt" :value="opt" />
             </el-select>
           </div>
           <div class="space-y-1">
-            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">SIM Status</label>
-            <el-select v-model="bulkFormData.simStatus" class="w-full" clearable placeholder="No change">
+            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('pages.accountProgress.simStatus') }}</label>
+            <el-select v-model="bulkFormData.sim_status" class="w-full" clearable placeholder="No change">
               <el-option v-for="opt in simStatusOptions" :key="opt" :label="opt" :value="opt" />
             </el-select>
           </div>
         </div>
 
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">MPIN</label>
-          <el-input v-model="bulkFormData.mpin" placeholder="4-digit MPIN (leave blank for no change)" />
-        </div>
-
         <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
              <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">DTI</span>
-             <el-radio-group v-model="bulkFormData.hasDti" size="small">
-               <el-radio-button :value="true">Yes</el-radio-button>
-               <el-radio-button :value="false">No</el-radio-button>
+             <el-radio-group v-model="bulkFormData.dti_done" size="small">
+               <el-radio-button :value="1">Yes</el-radio-button>
+               <el-radio-button :value="0">No</el-radio-button>
                <el-radio-button :value="null">None</el-radio-button>
              </el-radio-group>
            </div>
            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
              <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Selfie</span>
-             <el-radio-group v-model="bulkFormData.hasSelfie" size="small">
-               <el-radio-button :value="true">Yes</el-radio-button>
-               <el-radio-button :value="false">No</el-radio-button>
+             <el-radio-group v-model="bulkFormData.selfie_done" size="small">
+               <el-radio-button :value="1">Yes</el-radio-button>
+               <el-radio-button :value="0">No</el-radio-button>
                <el-radio-button :value="null">None</el-radio-button>
              </el-radio-group>
            </div>
            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
              <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Store</span>
-             <el-radio-group v-model="bulkFormData.hasStorePhoto" size="small">
-               <el-radio-button :value="true">Yes</el-radio-button>
-               <el-radio-button :value="false">No</el-radio-button>
+             <el-radio-group v-model="bulkFormData.store_photo_done" size="small">
+               <el-radio-button :value="1">Yes</el-radio-button>
+               <el-radio-button :value="0">No</el-radio-button>
                <el-radio-button :value="null">None</el-radio-button>
              </el-radio-group>
            </div>
            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
              <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">SYS</span>
-             <el-radio-group v-model="bulkFormData.onSystem" size="small">
-               <el-radio-button :value="true">Yes</el-radio-button>
-               <el-radio-button :value="false">No</el-radio-button>
+             <el-radio-group v-model="bulkFormData.is_on_system" size="small">
+               <el-radio-button :value="1">Yes</el-radio-button>
+               <el-radio-button :value="0">No</el-radio-button>
                <el-radio-button :value="null">None</el-radio-button>
              </el-radio-group>
            </div>
            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl col-span-2">
              <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Synced GPO</span>
-             <el-radio-group v-model="bulkFormData.hasSyncedGpo" size="small">
-               <el-radio-button :value="true">Yes</el-radio-button>
-               <el-radio-button :value="false">No</el-radio-button>
+             <el-radio-group v-model="bulkFormData.synced_to_gpo" size="small">
+               <el-radio-button :value="1">Yes</el-radio-button>
+               <el-radio-button :value="0">No</el-radio-button>
                <el-radio-button :value="null">None</el-radio-button>
              </el-radio-group>
            </div>
@@ -1274,8 +1263,8 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
       </div>
       <template #footer>
         <div class="flex justify-end gap-3 px-8 py-6 bg-gray-50 border-t border-gray-100">
-          <el-button @click="isBulkModalOpen = false" class="!rounded-xl text-xs font-bold">Cancel</el-button>
-          <el-button type="primary" class="!bg-indigo-600 !rounded-xl text-xs font-bold shadow-lg shadow-indigo-100" @click="handleBulkUpdate">Update Multiple</el-button>
+          <el-button @click="isBulkModalOpen = false" class="!rounded-xl text-xs font-bold">{{ t('common.cancel') }}</el-button>
+          <el-button type="primary" class="!bg-indigo-600 !rounded-xl text-xs font-bold shadow-lg shadow-indigo-100" @click="handleBulkUpdate">{{ t('common.update') }}</el-button>
         </div>
       </template>
     </el-dialog>
@@ -1283,8 +1272,50 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
 </template>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
 .duplicate-input .el-input__wrapper {
   box-shadow: 0 0 0 1px #f43f5e inset !important;
   background-color: #fff1f2 !important;
+}
+
+.custom-table-header {
+  background-color: #f5f7fa !important;
+  color: #606266 !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.el-table {
+  --el-table-header-bg-color: #f5f7fa;
+  --el-table-border-color: #ebeef5;
+}
+
+.el-table .el-table__cell {
+  padding: 12px 0 !important;
+}
+
+.el-button--primary {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+}
+
+.el-input__wrapper, .el-select__wrapper {
+  box-shadow: 0 0 0 1px #dcdfe6 inset !important;
+  border-radius: 4px !important;
+}
+
+.el-input__wrapper:hover, .el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px #c0c4cc inset !important;
+}
+
+.el-input__inner {
+  font-size: 13px !important;
 }
 </style>

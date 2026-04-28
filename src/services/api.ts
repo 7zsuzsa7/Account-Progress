@@ -7,8 +7,8 @@ const api = axios.create({
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
-export const getAccounts = async () => {
-  const response = await api.get('/accounts');
+export const getAccounts = async (params: any = {}) => {
+  const response = await api.get('/accounts', { params });
   return response.data;
 };
 
@@ -19,6 +19,11 @@ export const createAccount = async (data: any) => {
 
 export const updateAccount = async (id: string | number, data: any) => {
   const response = await api.put(`/accounts/${id}`, data);
+  return response.data;
+};
+
+export const deleteAccount = async (id: string | number) => {
+  const response = await api.delete(`/accounts/${id}`);
   return response.data;
 };
 
