@@ -242,26 +242,22 @@ const getCanonicalSubpage = (record: AccountRecord): WorkflowStatus | null => {
     return 'Decommissioned';
   }
 
-  // 2. Fully Verified - Destination for completed records
-  if (record.progress_status === 'Fully Verified' || record.progress_status === 'Approved') {
+  // 2. Status-based Routing (Prioritize explicit status over data completion)
+  if (record.progress_status === 'Approved' || record.progress_status === 'Fully Verified') {
     return 'Fully Verified';
   }
 
-  // 3. Status-based routing (Workflow)
-  // Logic: When a step is "Done", it moves to the NEXT subpage to await the next step actions.
-  
   if (record.progress_status === 'Step 3 Done') {
-    // Finished Step 3 tasks, moved to Fully Verified subpage for final verification
     return 'Fully Verified';
   }
 
-  if (record.progress_status === 'Step 2 Done' || ['Step 3 Done', 'Approved'].includes(record.progress_status)) {
-    // Completed Step 2, currently in Step 3 stage
+  if (record.progress_status === 'Step 2 Done') {
+    // Stage: Moved to Step 3, waiting for Step 3 actions
     return 'Step 3';
   }
 
   if (record.progress_status === 'Step 1 Done') {
-    // Completed Step 1, currently in Step 2 stage
+    // Stage: Moved to Step 2, waiting for Step 2 actions
     return 'Step 2';
   }
 
@@ -269,7 +265,7 @@ const getCanonicalSubpage = (record: AccountRecord): WorkflowStatus | null => {
     return 'Step 1';
   }
 
-  // 4. Data-driven fallbacks (if status is generic like 'Need Fix')
+  // 3. Fallback: Data-driven routing (if status is generic like 'Need Fix' or 'Ready')
   if (verifiedData) return 'Fully Verified';
   if (step3Data) return 'Step 3';
   if (step2Data) return 'Step 2';
@@ -758,8 +754,6 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
             >
               <el-table-column type="selection" width="55" fixed />
               
-              <el-table-column type="selection" width="55" fixed />
-              
               <el-table-column v-if="isColumnVisible('mobile_number')" prop="mobile_number" :label="t('pages.accountProgress.mobileNumber')" width="160" sortable>
                 <template #default="{ row }">
                   <div class="text-sm font-bold text-gray-900 tracking-tight">{{ row.mobile_number }}</div>
@@ -818,7 +812,7 @@ const isColumnVisible = (column: string) => tabConfig.value.columns.includes(col
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="isColumnVisible('store_name')" prop="store_name" :label="t('pages.accountProgress.storeName')" width="200">
+              <el-table-column v-if="isColumnVisible('store_name')" prop="store_name" :label="t('pages.accountProgress.storeName')" width="200" sortable>
                 <template #default="{ row }">
                   <span class="text-xs font-bold text-gray-800">{{ row.store_name }}</span>
                 </template>
